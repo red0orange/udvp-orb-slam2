@@ -48,7 +48,7 @@ void LocalMapping::SetTracker(Tracking *pTracker)
     mpTracker=pTracker;
 }
 
-void LocalMapping::Run()
+void LocalMapping::Run()  // @note Local Mapping Thread -> Run 主函数
 {
 
     mbFinished = false;

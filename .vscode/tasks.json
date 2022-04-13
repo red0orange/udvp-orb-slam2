@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "make main",
+			"command": "make -j4",
+			"args": [
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/build",
+			},
+			"problemMatcher": [
+			],
+			"group": "build",
+			"detail": "make编译"
+		}
+	]
+}

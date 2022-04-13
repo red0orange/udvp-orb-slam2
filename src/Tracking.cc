@@ -268,7 +268,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     return mCurrentFrame.mTcw.clone();
 }
 
-void Tracking::Track()
+void Tracking::Track()  // @note Tracking Thread -> 主函数
 {
     if(mState==NO_IMAGES_YET)
     {

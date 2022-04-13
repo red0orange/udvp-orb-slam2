@@ -37,7 +37,7 @@ using namespace std;
 void LoadImages(const string &strFile, vector<string> &vstrImageFilenames,
                 vector<double> &vTimestamps);
 
-int main(int argc, char **argv)
+int main(int argc, char **argv)  // @note Example Main
 {
     if(argc != 4)
     {
@@ -86,6 +86,7 @@ int main(int argc, char **argv)
 // #endif
 
         // Pass the image to the SLAM system
+        // @note 每帧输入图像到SLAM系统中
         SLAM.TrackMonocular(im,tframe);
 
 // #ifdef COMPILEDWITHC11

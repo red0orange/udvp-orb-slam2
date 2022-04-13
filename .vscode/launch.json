@@ -1,0 +1,40 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+    {
+        "name": "(gdb) 启动",
+        "type": "cppdbg",
+        "request": "launch",
+        "preLaunchTask": "make main",
+        "program": "${workspaceFolder}/Examples/Monocular/mono_tum",
+        "args": [
+            // first dataset
+            "${workspaceFolder}/Vocabulary/ORBvoc.txt",
+            "/home/hdh6/github_projects/PlanarSLAM/Examples/RGB-D/TUM3.yaml",
+            "/mnt/d/数据集/TUM/rgbd_dataset_freiburg3_nostructure_texture_near_withloop"
+        ],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [
+            // {"name": "LD_LIBRARY_PATH", "value": "/opt/ros/melodic/lib:/usr/local/cuda/lib:/usr/local/cuda/lib64:/home/hdh6/install_libs/VTK-8.2/lib"}
+        ],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "setupCommands": [
+            {
+                "description": "为 gdb 启用整齐打印",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            },
+            {
+                "description":  "将反汇编风格设置为 Intel",
+                "text": "-gdb-set disassembly-flavor intel",
+                "ignoreFailures": true
+            }
+        ]
+    }
+    ]
+}
