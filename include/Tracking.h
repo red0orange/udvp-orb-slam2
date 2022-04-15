@@ -37,6 +37,7 @@
 #include "Initializer.h"
 #include "MapDrawer.h"
 #include "System.h"
+#include "UDVP.h"
 
 #include <mutex>
 
@@ -65,6 +66,7 @@ public:
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
     void SetViewer(Viewer* pViewer);
+    void SetUDVP(UDVP *pUDVP);
 
     // Load new settings
     // The focal lenght should be similar or scale prediction will fail when projecting points
@@ -153,6 +155,8 @@ protected:
     //Other Thread Pointers
     LocalMapping* mpLocalMapper;
     LoopClosing* mpLoopClosing;
+
+    UDVP* mpUDVP;
 
     //ORB
     ORBextractor* mpORBextractorLeft, *mpORBextractorRight;

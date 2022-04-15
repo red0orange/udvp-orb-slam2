@@ -167,6 +167,11 @@ void Tracking::SetViewer(Viewer *pViewer)
     mpViewer=pViewer;
 }
 
+void Tracking::SetUDVP(UDVP *pUDVP)
+{
+    mpUDVP=pUDVP;
+}
+
 
 cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRectRight, const double &timestamp)
 {
@@ -263,7 +268,7 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     else
         mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
 
-    Track();
+    Track(); // 调用子函数
 
     return mCurrentFrame.mTcw.clone();
 }
@@ -421,16 +426,20 @@ void Tracking::Track()  // @note Tracking Thread -> 主函数
         // Update drawer
         mpFrameDrawer->Update(this);
 
+        // Update UDVP
+        cv::Mat optim_camera_T = mpUDVP->optimization(&this->mCurrentFrame, this->mvpLocalMapPoints);
+
+        // @note 新增关键帧
         // If tracking were good, check if we insert a keyframe
-        if(bOK)
+        if (bOK)
         {
             // Update motion model
-            if(!mLastFrame.mTcw.empty())
+            if (!mLastFrame.mTcw.empty())
             {
-                cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
-                mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0,3).colRange(0,3));
-                mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0,3).col(3));
-                mVelocity = mCurrentFrame.mTcw*LastTwc;
+                cv::Mat LastTwc = cv::Mat::eye(4, 4, CV_32F);
+                mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0, 3).colRange(0, 3));
+                mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0, 3).col(3));
+                mVelocity = mCurrentFrame.mTcw * LastTwc;
             }
             else
                 mVelocity = cv::Mat();
@@ -438,37 +447,37 @@ void Tracking::Track()  // @note Tracking Thread -> 主函数
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
             // Clean VO matches
-            for(int i=0; i<mCurrentFrame.N; i++)
+            for (int i = 0; i < mCurrentFrame.N; i++)
             {
-                MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
-                if(pMP)
-                    if(pMP->Observations()<1)
+                MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
+                if (pMP)
+                    if (pMP->Observations() < 1)
                     {
                         mCurrentFrame.mvbOutlier[i] = false;
-                        mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
+                        mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
                     }
             }
 
             // Delete temporal MapPoints
-            for(list<MapPoint*>::iterator lit = mlpTemporalPoints.begin(), lend =  mlpTemporalPoints.end(); lit!=lend; lit++)
+            for (list<MapPoint *>::iterator lit = mlpTemporalPoints.begin(), lend = mlpTemporalPoints.end(); lit != lend; lit++)
             {
-                MapPoint* pMP = *lit;
+                MapPoint *pMP = *lit;
                 delete pMP;
             }
             mlpTemporalPoints.clear();
 
             // Check if we need to insert a new keyframe
-            if(NeedNewKeyFrame())
+            if (NeedNewKeyFrame())
                 CreateNewKeyFrame();
 
             // We allow points with high innovation (considererd outliers by the Huber Function)
             // pass to the new keyframe, so that bundle adjustment will finally decide
             // if they are outliers or not. We don't want next frame to estimate its position
             // with those points so we discard them in the frame.
-            for(int i=0; i<mCurrentFrame.N;i++)
+            for (int i = 0; i < mCurrentFrame.N; i++)
             {
-                if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
-                    mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
+                if (mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
+                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(NULL);
             }
         }
 
@@ -477,7 +486,7 @@ void Tracking::Track()  // @note Tracking Thread -> 主函数
         {
             if(mpMap->KeyFramesInMap()<=5)
             {
-                cout << "Track lost soon after initialisation, reseting..." << endl;
+                std::cout << "Track lost soon after initialisation, reseting..." << std::endl;
                 mpSystem->Reset();
                 return;
             }

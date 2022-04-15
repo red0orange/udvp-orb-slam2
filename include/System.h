@@ -38,6 +38,7 @@ using namespace cv;
 #include "KeyFrameDatabase.h"
 #include "ORBVocabulary.h"
 #include "Viewer.h"
+#include "UDVP.h"
 
 namespace ORB_SLAM2
 {
@@ -143,6 +144,8 @@ private:
     // It also decides when to insert a new keyframe, create some new MapPoints and
     // performs relocalization if tracking fails.
     Tracking* mpTracker;
+    
+    UDVP* mpUDVP;
 
     // Local Mapper. It manages the local map and performs local bundle adjustment.
     LocalMapping* mpLocalMapper;
