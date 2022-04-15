@@ -46,7 +46,7 @@ g2o::SE3Quat Converter::toSE3Quat(const cv::Mat &cvT)
     return g2o::SE3Quat(R,t);
 }
 
-g2o::SE3Quat toSE3Quat(const Eigen::Matrix<double,4,4> &T)
+g2o::SE3Quat Converter::toSE3Quat(const Eigen::Matrix4d &T)
 {
     return g2o::SE3Quat(T(Eigen::seq(0, 2), Eigen::seq(0, 2)), T(Eigen::seq(0, 2), Eigen::last));
 }

@@ -43,7 +43,7 @@ double computeUncertainty(Eigen::Matrix4d camera_T, Eigen::Matrix4d estimate_cam
     Eigen::Vector3d translation_vector = camera_T(Eigen::seq(0, 2), Eigen::last);
     Eigen::Matrix<double,3,3> estimate_rotate_mat = estimate_camera_T(Eigen::seq(0, 2), Eigen::seq(0, 2));
     Eigen::Vector3d estimate_translation_vector = estimate_camera_T(Eigen::seq(0, 2), Eigen::last);
-    // cal world axis camera center 
+    // cal world axis camera center
     Eigen::Vector3d camera_center = -rotate_mat.transpose() * translation_vector;
     Eigen::Vector3d estimate_camera_center = -estimate_rotate_mat.transpose() * estimate_translation_vector;
 
@@ -148,9 +148,6 @@ public:
             map_point(map_point),
             phi(phi), M(M), N(N), N_MAX(N_MAX)
     {
-        resize(4); // 边的优化变量维度：4
-        // 0: 待优化的SE3
-        // 1: 待优化的约束问题
     }
 
     // 计算曲线模型误差
@@ -167,15 +164,15 @@ public:
         // 取出当前帧的homo matrix
         Eigen::Matrix<double, 4, 4> homo_pose;
         homo_pose(Eigen::seq(0, 2), Eigen::seq(0, 2)) = Converter::toMatrix3d(cur_frame->GetRotation());
-        homo_pose(Eigen::seq(0, 2), Eigen::last) = Converter::toMatrix3d(cur_frame->GetTranslation());
+        homo_pose(Eigen::seq(0, 2), Eigen::last) = Converter::toVector3d(cur_frame->GetTranslation());
         homo_pose(3, 3) = 1;
 
         // 取出map_point的world axis center
         Eigen::Vector3d mp_world_center = Converter::toVector3d(map_point->GetWorldPos());
 
         // 计算uncertainty和observe error
-        double uncertainty = compute_uncertainty(homo_pose, estimate_homo_pose, mp_world_center, fx, fy);
-        double observe_error = compute_observe_error(estimate_homo_pose, mp_world_center, max_depth, fov);
+        double uncertainty = computeUncertainty(homo_pose, estimate_homo_pose, mp_world_center, fx, fy);
+        double observe_error = computeObserveError(estimate_homo_pose, mp_world_center, max_depth, fov);
 
         _error(0) = observe_error * (uncertainty + phi - M) - (phi * N_MAX / N) + M; 
     }
@@ -221,14 +218,14 @@ UDVP::UDVP(const string& strSettingsFile)
     this->max_depth = max_depth;
 }
 
-double boundary_function(Eigen::Matrix4d estimate_camera_T, std::vector<MapPoint*> local_map_points, double N_MAX, double max_depth, double fov)
+double UDVP::boundary_function(Eigen::Matrix4d estimate_camera_T, std::vector<MapPoint*> local_map_points, double N_MAX, double max_depth, double fov)
 {
     double tmp_value = 0;
     for (int i = 0; i < local_map_points.size(); i++)
     {
         MapPoint *cur_map_point = local_map_points[i];
         Eigen::Vector3d cur_map_point_center = Converter::toVector3d(cur_map_point->GetWorldPos());
-        tmp_value += compute_observe_error(estimate_camera_T, cur_map_point_center, max_depth, fov);
+        tmp_value += computeObserveError(estimate_camera_T, cur_map_point_center, max_depth, fov);
     }
     return N_MAX - tmp_value;
 }
@@ -305,11 +302,12 @@ cv::Mat UDVP::optimization(Frame* cur_frame, std::vector<MapPoint*> local_map_po
 
         e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
 
-        Eigen::Matrix<double, 6, 6> pure_rotate_information_matrix = Eigen::Matrix<double, 6, 6>::Identity();
+        Eigen::Matrix<double, 6, 6> pure_rotate_information_matrix;
+        pure_rotate_information_matrix.setIdentity();
         pure_rotate_information_matrix(3, 3) = 1000;
         pure_rotate_information_matrix(4, 4) = 1000;
         pure_rotate_information_matrix(5, 5) = 1000;
-        e->setInformation(pure_rotate_information_matrix);
+        // e->setInformation(pure_rotate_information_matrix);
 
         // e->setMeasurement(obs);
         // const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
@@ -351,7 +349,7 @@ cv::Mat UDVP::optimization(Frame* cur_frame, std::vector<MapPoint*> local_map_po
         for (int i = 0; i < local_map_points.size(); i++) {
             MapPoint *cur_map_point = local_map_points[i];
             Eigen::Vector3d cur_map_point_center = Converter::toVector3d(cur_map_point->GetWorldPos());
-            tmp_value += (compute_observe_error(init_pose, cur_map_point_center, this->max_depth, this->fov) / N_MAX) + (compute_uncertainty(cur_camera_homo_pose, init_pose, cur_map_point_center, this->fx, this->fy) / N);
+            tmp_value += (computeObserveError(init_pose, cur_map_point_center, this->max_depth, this->fov) / N_MAX) + (computeUncertainty(cur_camera_homo_pose, init_pose, cur_map_point_center, this->fx, this->fy) / N);
         }
         double phi = M - tmp_value;
 
@@ -375,5 +373,6 @@ cv::Mat UDVP::optimization(Frame* cur_frame, std::vector<MapPoint*> local_map_po
     }
 
     return Converter::toCvMat(optim_pose);
+    // return cv::Mat::zeros(cv::Size(3, 3), CV_32F);
 }
 }

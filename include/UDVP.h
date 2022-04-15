@@ -1,6 +1,8 @@
 #ifndef UDVP_H
 #define UDVP_H
 
+#include <Eigen/Dense>
+
 #include "Frame.h"
 #include "MapPoint.h"
 
@@ -12,9 +14,9 @@ inline double sigmoid(double x)
     return 1.0 / (1.0 + exp(-x));
 }
 
-double compute_uncertainty(Eigen::Matrix4d camera_T, Eigen::Matrix4d estimate_camera_T, Eigen::Vector3d map_point_center, double fx, double fy);  // 对应h函数
+double computeUncertainty(Eigen::Matrix4d camera_T, Eigen::Matrix4d estimate_camera_T, Eigen::Vector3d map_point_center, double fx, double fy);  // 对应h函数
 
-double compute_observe_error(Eigen::Matrix4d estimate_camera_T, Eigen::Vector3d map_point_center, double max_depth, double fov);  // 对应sigma函数
+double computeObserveError(Eigen::Matrix4d camera_T, Eigen::Vector3d map_point_center, double max_depth, double fov);  // 对应sigma函数
 
 class UDVP
 {
