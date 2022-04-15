@@ -32,6 +32,7 @@ using namespace cv;
 #include "Tracking.h"
 #include "FrameDrawer.h"
 #include "MapDrawer.h"
+#include "UDVPDrawer.h"
 #include "Map.h"
 #include "LocalMapping.h"
 #include "LoopClosing.h"
@@ -159,6 +160,7 @@ private:
 
     FrameDrawer* mpFrameDrawer;
     MapDrawer* mpMapDrawer;
+    UDVPDrawer* mpUDVPDrawer;
 
     // System threads: Local Mapping, Loop Closing, Viewer.
     // The Tracking thread "lives" in the main execution thread that creates the System object.

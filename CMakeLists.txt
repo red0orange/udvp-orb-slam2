@@ -69,6 +69,7 @@ src/Sim3Solver.cc
 src/Initializer.cc
 src/Viewer.cc
 src/UDVP.cc
+src/UDVPDrawer.cc
 )
 
 target_link_libraries(${PROJECT_NAME}

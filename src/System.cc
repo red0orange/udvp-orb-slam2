@@ -80,10 +80,12 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
     //Create the Map
     mpMap = new Map();
+    mpUDVP = new UDVP(strSettingsFile);
 
     //Create Drawers. These are used by the Viewer
     mpFrameDrawer = new FrameDrawer(mpMap);
     mpMapDrawer = new MapDrawer(mpMap, strSettingsFile);
+    mpUDVPDrawer = new UDVPDrawer(mpUDVP, strSettingsFile);
 
     // @note 启动三个线程
     //Initialize the Tracking thread
@@ -91,7 +93,6 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
                              mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor);
 
-    mpUDVP = new UDVP(strSettingsFile);
 
     //Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
@@ -104,7 +105,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //Initialize the Viewer thread and launch
     if(bUseViewer)
     {
-        mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile);
+        mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpUDVPDrawer,mpTracker,strSettingsFile);
         mptViewer = new thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
     }

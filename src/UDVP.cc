@@ -243,7 +243,7 @@ cv::Mat UDVP::optimization(Frame* cur_frame, std::vector<MapPoint*> local_map_po
     double gamma = 0.7;
     double N_t = 50;
     double M = 50;
-    double tolerance = 1e-4;  // KKT第二个约束最优化问题的容忍值
+    double tolerance = 100;  // KKT第二个约束最优化问题的容忍值
 
     // 动态超参数
     double N = 0;
@@ -302,14 +302,9 @@ cv::Mat UDVP::optimization(Frame* cur_frame, std::vector<MapPoint*> local_map_po
 
         e->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(0)));
 
-        Eigen::Matrix<double, 6, 6> pure_rotate_information_matrix;
-        pure_rotate_information_matrix.setIdentity();
-        pure_rotate_information_matrix(3, 3) = 1000;
-        pure_rotate_information_matrix(4, 4) = 1000;
-        pure_rotate_information_matrix(5, 5) = 1000;
-        // e->setInformation(pure_rotate_information_matrix);
+        // e->setInformation();
+        e->setMeasurement(0);
 
-        // e->setMeasurement(obs);
         // const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
         // e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
 
@@ -372,7 +367,8 @@ cv::Mat UDVP::optimization(Frame* cur_frame, std::vector<MapPoint*> local_map_po
         }
     }
 
+    all_optim_camera_T.push_back(optim_pose);
+
     return Converter::toCvMat(optim_pose);
-    // return cv::Mat::zeros(cv::Size(3, 3), CV_32F);
 }
 }

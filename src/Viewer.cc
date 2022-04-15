@@ -30,8 +30,8 @@
 namespace ORB_SLAM2
 {
 
-Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking, const string &strSettingPath):
-    mpSystem(pSystem), mpFrameDrawer(pFrameDrawer),mpMapDrawer(pMapDrawer), mpTracker(pTracking),
+Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, UDVPDrawer* pUDVPDrawer, Tracking *pTracking, const string &strSettingPath):
+    mpSystem(pSystem), mpFrameDrawer(pFrameDrawer),mpMapDrawer(pMapDrawer), mpUDVPDrawer(pUDVPDrawer), mpTracker(pTracking),
     mbFinishRequested(false), mbFinished(true), mbStopped(true), mbStopRequested(false)
 {
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
@@ -73,6 +73,7 @@ void Viewer::Run()
     pangolin::Var<bool> menuFollowCamera("menu.Follow Camera",true,true);
     pangolin::Var<bool> menuShowPoints("menu.Show Points",true,true);
     pangolin::Var<bool> menuShowKeyFrames("menu.Show KeyFrames",true,true);
+    pangolin::Var<bool> menuShowUDVP("menu.Show UDVP",true,true);
     pangolin::Var<bool> menuShowGraph("menu.Show Graph",true,true);
     pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode",false,true);
     pangolin::Var<bool> menuReset("menu.Reset",false,false);
@@ -135,6 +136,9 @@ void Viewer::Run()
             mpMapDrawer->DrawKeyFrames(menuShowKeyFrames,menuShowGraph);
         if(menuShowPoints)
             mpMapDrawer->DrawMapPoints();
+
+        if (menuShowUDVP)
+            mpUDVPDrawer->DrawUDVPPose();
 
         pangolin::FinishFrame();
 
