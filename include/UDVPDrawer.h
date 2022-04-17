@@ -15,7 +15,8 @@ class UDVPDrawer
 public:
     UDVPDrawer(UDVP* mudvp, const string &strSettingPath);
 
-    void DrawUDVPPose();
+    void DrawUDVPOptimPose();
+    void DrawUDVPInitPose();
 
 private:
 

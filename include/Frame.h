@@ -86,7 +86,7 @@ public:
 
     // Returns translation
     inline cv::Mat GetTranslation(){
-        return mTcw.clone();
+        return mtcw.clone();
     }
 
     // Check if a MapPoint is in the frustum of the camera

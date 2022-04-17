@@ -26,6 +26,7 @@ public:
     cv::Mat optimization(Frame* cur_frmae, std::vector<MapPoint*> local_map_points);
 
     std::vector<Eigen::Matrix4d> all_optim_camera_T;
+    std::vector<Eigen::Matrix4d> all_init_camera_T;
 
 private:
     double boundary_function(Eigen::Matrix4d estimate_camera_T, std::vector<MapPoint*> local_map_points, double N_MAX, double max_depth, double fov);  // KKT的约束函数
