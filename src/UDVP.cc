@@ -162,9 +162,9 @@ public:
 
         // 取出当前帧的homo matrix
         Eigen::Matrix<double, 4, 4> homo_pose;
+        homo_pose.setIdentity();
         homo_pose(Eigen::seq(0, 2), Eigen::seq(0, 2)) = Converter::toMatrix3d(cur_frame->GetRotation());
         homo_pose(Eigen::seq(0, 2), Eigen::last) = Converter::toVector3d(cur_frame->GetTranslation());
-        homo_pose(3, 3) = 1;
 
         // 取出map_point的world axis center
         Eigen::Vector3d mp_world_center = Converter::toVector3d(map_point->GetWorldPos());
@@ -173,7 +173,8 @@ public:
         double uncertainty = computeUncertainty(homo_pose, estimate_homo_pose, mp_world_center, fx, fy);
         double observe_error = computeObserveError(estimate_homo_pose, mp_world_center, max_depth, fov);
 
-        _error(0) = observe_error * (uncertainty + phi - M) - (phi * N_MAX / N) + M; 
+        // cout << "error: " << observe_error * (uncertainty + phi - M) - (phi * N_MAX / N) + M << endl;
+        _error(0) = observe_error * (uncertainty + phi - M) - (phi * N_MAX / N) + M;
     }
     virtual bool read( istream& in ) {}
     virtual bool write( ostream& out ) const {}
@@ -227,8 +228,9 @@ public:
         double uncertainty = computeUncertainty(homo_pose, estimate_homo_pose, mp_world_center, fx, fy);
         double observe_error = computeObserveError(estimate_homo_pose, mp_world_center, max_depth, fov);
 
-        // _error(0) = observe_error * uncertainty + (1 - observe_error) * M;
-        _error(0) = 0;
+        // cout << "error: " << observe_error * uncertainty + (1 - observe_error) * M << endl;
+        // _error(0) = 0.00001 * (observe_error * uncertainty + (1 - observe_error) * M);
+        _error(0) = uncertainty;
     }
 };
 
@@ -269,17 +271,18 @@ double UDVP::boundary_function(Eigen::Matrix4d estimate_camera_T, std::vector<Ma
 
 cv::Mat UDVP::optimization(Frame* cur_frame, std::vector<MapPoint*> local_map_points){
     g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
-    linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
-    g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    g2o::BlockSolver< g2o::BlockSolverTraits<6,1> >::LinearSolverType * linearSolver;
+    linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver< g2o::BlockSolverTraits<6,1> >::PoseMatrixType>();
+    g2o::BlockSolver< g2o::BlockSolverTraits<6,1> > * solver_ptr = new g2o::BlockSolver< g2o::BlockSolverTraits<6,1> >(linearSolver);
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
+    optimizer.setVerbose( true );
 
     // 配置参数
     // 超参数
     double gamma = 0.7;
     double N_t = 50;
-    double M = 0;
+    double M = 5;
     double tolerance = 10;  // KKT第二个约束最优化问题的容忍值
 
     // 动态超参数
@@ -291,39 +294,36 @@ cv::Mat UDVP::optimization(Frame* cur_frame, std::vector<MapPoint*> local_map_po
     Eigen::Matrix3d cur_camera_rotation = Converter::toMatrix3d(cur_frame->GetRotation());
     Eigen::Vector3d cur_camera_translation = Converter::toVector3d(cur_frame->GetTranslation());
     Eigen::Matrix4d cur_camera_homo_pose;  // 保留一份homo pose方便计算
+    cur_camera_homo_pose.setIdentity();
     cur_camera_homo_pose(Eigen::seq(0, 2), Eigen::seq(0, 2)) = cur_camera_rotation;
     cur_camera_homo_pose(Eigen::seq(0, 2), Eigen::last) = cur_camera_translation;
-    cur_camera_homo_pose(3, 3) = 1;
+
+    all_frame_camera_T.push_back(cur_camera_homo_pose);
 
     for (int i = 0; i < local_map_points.size(); i++)
     {
-        // 计算mp的摄像头坐标
-        Eigen::Vector3d Pw = Converter::toVector3d(local_map_points[i]->GetWorldPos());
-        Eigen::Vector4d homo_Pw(Pw(0), Pw(1), Pw(2), 1);
-        Eigen::Vector4d homo_Pc = cur_camera_homo_pose * homo_Pw;
-        Eigen::Vector3d Pc(homo_Pc(0), homo_Pc(1), homo_Pc(2));
-        // ********************** 计算当前帧姿态N的值 **************************
-        // 计算观测error
-        double lambda = acos( (unit_vector.transpose() * Pc)(0) / (unit_vector.norm() * Pc.norm()) );
-        double observe_error = sigmoid(this->max_depth - Pc.norm()) * sigmoid((fov / 2) - abs(lambda));
-        N += observe_error;
-
-        // ********************** 计算优化使用的初始化位姿态 **************************
-        n_w += ((Pw - cur_camera_center) / (Pw - cur_camera_center).norm());
+        Eigen::Vector3d mp_world_pos = Converter::toVector3d(local_map_points[i]->GetWorldPos());
+        // 计算初始的observe error
+        N += computeObserveError(cur_camera_homo_pose, mp_world_pos, max_depth, fov);
+        // 计算优化使用的初始化位姿态
+        n_w += ((mp_world_pos - cur_camera_center) / (mp_world_pos - cur_camera_center).norm());
     }
     // ********************** 根据N、N_t、gamma得到N_max值 **************************
     double N_MAX = max(gamma * N, N_t);
     // ********************** 根据n_w计算得到初始旋转矩阵 **************************
+    Eigen::AngleAxisd init_rotate_vector(
+        acos((n_w.transpose() * -unit_vector)(0) / (n_w.norm() * unit_vector.norm())),
+        (((n_w.transpose()).cross(unit_vector)) / ((n_w.transpose()).cross(unit_vector).norm()))
+        ); // TODO 不明白它这里求反方向+旋转向量的方法，不确定对不对
+    Eigen::Matrix3d init_Rwc = init_rotate_vector.toRotationMatrix();
+    Eigen::Vector3d init_twc = cur_camera_center;
+    Eigen::Matrix3d init_Rcw = init_Rwc.transpose();
+    Eigen::Vector3d init_tcw = -init_Rcw * init_twc;
+
     Eigen::Matrix4d init_pose;
     init_pose.setIdentity();
-    init_pose(Eigen::seq(0, 2), Eigen::last) = cur_camera_translation; // 平移矩阵固定
-    Eigen::AngleAxisd init_rotate_vector(
-        acos((n_w.transpose() * -unit_vector)(0) / (n_w.norm() * -unit_vector.norm())),
-        ((-n_w.transpose().cross(unit_vector)) / (-n_w.transpose().cross(unit_vector).norm()))
-        ); // TODO 不明白它这里求反方向+旋转向量的方法，不确定对不对
-    Eigen::Matrix3d init_rotate_matrix = init_rotate_vector.toRotationMatrix();
-    // init_pose(Eigen::seq(0, 2), Eigen::seq(0, 2)) = cur_camera_rotation;
-    init_pose(Eigen::seq(0, 2), Eigen::seq(0, 2)) = init_rotate_matrix;
+    init_pose(Eigen::seq(0, 2), Eigen::seq(0, 2)) = init_Rcw;
+    init_pose(Eigen::seq(0, 2), Eigen::last) = init_tcw;
     all_init_camera_T.push_back(init_pose);
 
     g2o::VertexSE3Expmap * pose = new g2o::VertexSE3Expmap();
@@ -347,12 +347,9 @@ cv::Mat UDVP::optimization(Frame* cur_frame, std::vector<MapPoint*> local_map_po
         // e->setInformation();
         e->setMeasurement(0);
 
-        // const float invSigma2 = pFrame->mvInvLevelSigma2[kpUn.octave];
-        // e->setInformation(Eigen::Matrix2d::Identity()*invSigma2);
-
         // g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
         // e->setRobustKernel(rk);
-        // rk->setDelta(deltaMono);
+        // rk->setDelta(5);
 
         optimizer.addEdge(e);
 
@@ -410,13 +407,27 @@ cv::Mat UDVP::optimization(Frame* cur_frame, std::vector<MapPoint*> local_map_po
     // }
 
     // ********************* 开始优化，先配置成无约束问题进行debug ********************
-    double phi = 0;
+    // double phi = 0;
+    // optimizer.initializeOptimization(0);
+    // optimizer.optimize(10); // 默认迭代次数为10
+
+    for(size_t i=0, iend=vpEdgesMono.size(); i<iend; i++)
+    {
+        Edge* e = vpEdgesMono[i];
+        e->computeError();
+        if (isnan(e->chi2()) || isinf(e->chi2())) {
+            e->setLevel(1);
+        }
+    }
     optimizer.initializeOptimization(0);
     optimizer.optimize(10); // 默认迭代次数为10
 
     g2o::VertexSE3Expmap* optim_pose_SE3 = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(0));
     g2o::SE3Quat optim_pose_SE3quatv = optim_pose_SE3->estimate();
     optim_pose = optim_pose_SE3quatv.to_homogeneous_matrix();
+
+    // cout << "init_pose: " << endl << init_pose << endl;
+    // cout << "optim_pose: " << endl << optim_pose << endl;
 
     // ********************* 导出结果 ********************
     all_optim_camera_T.push_back(optim_pose);

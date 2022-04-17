@@ -120,4 +120,58 @@ void UDVPDrawer::DrawUDVPInitPose()
         glPopMatrix();
     }
 }
+
+void UDVPDrawer::DrawFramePose()
+{
+    const float &w = mUDVPSize;
+    const float h = w*0.75;
+    const float z = w*0.6;
+
+    for(size_t i=0; i<mudvp->all_frame_camera_T.size(); i++)
+    {
+        Eigen::Matrix4d frame_pose = mudvp->all_frame_camera_T[i];
+        Eigen::Matrix3d eigen_Rcw = frame_pose(Eigen::seq(0, 2), Eigen::seq(0, 2));
+        cv::Mat Rcw = Converter::toCvMat(eigen_Rcw);
+        Eigen::Vector3d eigen_tcw = frame_pose(Eigen::seq(0, 2), Eigen::last);
+        cv::Mat tcw = Converter::toCvMat(eigen_tcw);
+        cv::Mat Rwc = Rcw.t();
+        cv::Mat twc = -Rwc*tcw;
+
+        cv::Mat Twc = cv::Mat::eye(4,4,CV_32F);
+        Rwc.copyTo(Twc.rowRange(0,3).colRange(0,3));
+        twc.copyTo(Twc.rowRange(0,3).col(3));
+        Twc = Twc.t();
+
+        glPushMatrix();
+
+        glMultMatrixf(Twc.ptr<GLfloat>(0));
+
+        glLineWidth(mUDVPLineWidth);
+        glColor3f(0.0f,0.5f,1.0f);
+        glBegin(GL_LINES);
+        glVertex3f(0,0,0);
+        glVertex3f(w,h,z);
+        glVertex3f(0,0,0);
+        glVertex3f(w,-h,z);
+        glVertex3f(0,0,0);
+        glVertex3f(-w,-h,z);
+        glVertex3f(0,0,0);
+        glVertex3f(-w,h,z);
+
+        glVertex3f(w,h,z);
+        glVertex3f(w,-h,z);
+
+        glVertex3f(-w,h,z);
+        glVertex3f(-w,-h,z);
+
+        glVertex3f(-w,h,z);
+        glVertex3f(w,h,z);
+
+        glVertex3f(-w,-h,z);
+        glVertex3f(w,-h,z);
+        glEnd();
+
+        glPopMatrix();
+    }
+}
 }

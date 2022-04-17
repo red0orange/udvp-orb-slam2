@@ -17,6 +17,7 @@ public:
 
     void DrawUDVPOptimPose();
     void DrawUDVPInitPose();
+    void DrawFramePose();
 
 private:
 

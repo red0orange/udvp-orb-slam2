@@ -74,8 +74,9 @@ void Viewer::Run()
     pangolin::Var<bool> menuShowPoints("menu.Show Points",true,true);
     pangolin::Var<bool> menuShowKeyFrames("menu.Show KeyFrames",true,true);
 
-    pangolin::Var<bool> menuShowUDVPOptimPose("menu.Show UDVP optim pose",true,true);
+    pangolin::Var<bool> menuShowUDVPFramePose("menu.Show UDVP frame pose",true,true);
     pangolin::Var<bool> menuShowUDVPInitPose("menu.Show UDVP init pose",true,true);
+    pangolin::Var<bool> menuShowUDVPOptimPose("menu.Show UDVP optim pose",false,true);
 
     pangolin::Var<bool> menuShowGraph("menu.Show Graph",true,true);
     pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode",false,true);
@@ -140,10 +141,12 @@ void Viewer::Run()
         if(menuShowPoints)
             mpMapDrawer->DrawMapPoints();
 
-        if (menuShowUDVPOptimPose)
-            mpUDVPDrawer->DrawUDVPOptimPose();
+        if (menuShowUDVPFramePose)
+            mpUDVPDrawer->DrawFramePose();
         if (menuShowUDVPInitPose)
             mpUDVPDrawer->DrawUDVPInitPose();
+        if (menuShowUDVPOptimPose)
+            mpUDVPDrawer->DrawUDVPOptimPose();
 
         pangolin::FinishFrame();
 
